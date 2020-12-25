@@ -124,6 +124,16 @@ object List {
   }
 
   /**
+   * 练习3.8
+   * 传入Nil和Cons，对集合进行copy
+   *
+   * @param as
+   * @tparam A
+   * @return
+   */
+  def copy[A](as: List[A]): List[A] = foldRight(as, Nil: List[A])(Cons(_, _))
+
+  /**
    * 练习3.9 通过foldRight计算数组长度
    *
    * @param as
@@ -185,9 +195,9 @@ object List {
    * @tparam B
    * @return
    */
-  def foldRightByLeft[A, B](as: List[A], z: B)(f: (B, A) => B): B = foldLeft(flip(as), z)(f)
+  def foldRightByLeft[A, B](as: List[A], z: B)(f: (A, B) => B): B = foldLeft(flip(as), z)((a, b) => f(b, a))
 
-  def foldLeftByRight[A, B](as: List[A], z: B)(f: (A, B) => B): B = foldRight(flip(as), z)(f)
+  def foldLeftByRight[A, B](as: List[A], z: B)(f: (B, A) => B): B = foldRight(flip(as), z)((a, b) => f(b, a))
 
   /**
    * 练习3.14
@@ -198,7 +208,7 @@ object List {
    * @tparam A
    * @return
    */
-  def appendFold[A](a1: List[A], a2: List[A]): List[A] = foldRightByLeft(a1: List[A], a2: List[A])((a, b) => Cons(b, a))
+  def appendFold[A](a1: List[A], a2: List[A]): List[A] = foldRightByLeft(a1: List[A], a2: List[A])((a, b) => Cons(a, b))
 
   /**
    * 练习3.15
@@ -211,13 +221,80 @@ object List {
   def mergeLists[A](lists: List[List[A]]): List[A] = foldRight(lists, Nil: List[A])((a, b) => appendFold(a, b))
 
 
+  /**
+   * 练习3。16
+   * 对每个元素+1
+   *
+   * @param list
+   * @return
+   */
+  def plusOne(list: List[Int]): List[Int] = foldRight(list, Nil: List[Int])((a, b) => Cons(a + 1, b))
 
-  //  /**
-  //   * 练习3。16
-  //   * @param list
-  //   * @return
-  //   */
-  //  def plusOne(list: List[Int]): List[Int] = ...
+  /**
+   * 练习3.17
+   * 将每个值转换为String
+   *
+   * @param list
+   * @return
+   */
+  def convertString(list: List[Double]): List[String] = foldRight(list, Nil: List[String])((a, b) => Cons(a.toString, b))
 
+  /**
+   * 练习3.18
+   * 写一个泛化的map函数，对每个元素进行修改，并维持列表结构
+   *
+   * @param as
+   * @param f
+   * @tparam A
+   * @tparam B
+   * @return
+   */
+  def map[A, B](as: List[A])(f: A => B): List[B] = foldRightByLeft(as, Nil: List[B])((a, b) => Cons(f(a), b))
+
+  /**
+   * 练习3.19
+   * 写一个filter函数，删除所有不满足断言的元素
+   * 解法：满足就正常返回当前层创建的Cons,不满足就上一层递归传进来的Cons
+   *
+   * @param as
+   * @param f
+   * @tparam A
+   * @return
+   */
+  def filter[A](as: List[A])(f: A => Boolean): List[A] = foldRightByLeft(as, Nil: List[A])((a, b) => if (f(a)) Cons(a, b) else b)
+
+  /**
+   * 练习3.20
+   * 写一个flatMap函数
+   *
+   * @param as
+   * @param f
+   * @tparam A
+   * @tparam B
+   * @return
+   */
+  def flatMap[A, B](as: List[A])(f: A => List[B]): List[B] = foldRightByLeft(as, Nil: List[B])((a, b) => appendFold(f(a), b))
+
+  /**
+   * 练习3.21
+   * 用flatMap实现filter
+   * @param as
+   * @param f
+   * @tparam A
+   * @return
+   */
+  def flatMapFilter[A](as:List[A]) (f: A => Boolean):List[A]= flatMap(as)(a=>if(f(a)) List(a) else Nil:List[A])
+
+  /**
+   * 练习3.22
+   * 接受两个列表，将元素相加构造一个新列表
+   * @param l1
+   * @param l2
+   * @return
+   */
+  def listPlus(l1:List[Int],l2:List[Int]):List[Int] = (l1,l2) match {
+    case _=>Nil
+    case (Cons(l1x,l1s),Cons(l2x,l2s))=>Cons(l1x+l2x,listPlus(l1s,l2s))
+  }
   def apply[A](as: A*): List[A] = if (as.isEmpty) Nil else Cons(as.head, apply(as.tail: _*))
 }
