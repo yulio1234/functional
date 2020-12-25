@@ -1,5 +1,7 @@
 package com.yuli.functional.chapter2
 
+import scala.annotation.tailrec
+
 /**
  * 描述:函数式例子
  *
@@ -34,12 +36,13 @@ object MyModule {
 
 
   /**
-   * 练习，找出第n个fib数
+   * 练习2.1，找出第n个fib数
    *
    * @param n
    * @return
    */
   def fib(n: Int): Int = {
+    @tailrec
     def loop(n: Int, acc: Int): Int = {
       if (n <= 0) acc
       else loop(n - 1, acc + 1)
