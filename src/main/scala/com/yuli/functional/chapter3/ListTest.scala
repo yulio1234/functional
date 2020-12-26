@@ -6,7 +6,7 @@ package com.yuli.functional.chapter3
  * @author yuli
  * @date 2020/7/28
  */
-object TestApp extends App {
+object ListTest extends App {
   val list: List[Int] = List(1, 2, 3, 4, 5)
   private val list2: List[Int] = List.tail(list)
   println(list2)
@@ -77,4 +77,7 @@ object TestApp extends App {
   println(List.flatMap(List(1, 2, 3))(i => List(i, i)))
   //练习3.22
   println(List.listPlus(List(1, 2, 3), List(4, 5, 6)))
+  //练习3.23
+  println(List.zipWith(List(1, 2, 3), List(4, 5, 6,7))(_*_))
+
 }

@@ -278,23 +278,35 @@ object List {
   /**
    * 练习3.21
    * 用flatMap实现filter
+   *
    * @param as
    * @param f
    * @tparam A
    * @return
    */
-  def flatMapFilter[A](as:List[A]) (f: A => Boolean):List[A]= flatMap(as)(a=>if(f(a)) List(a) else Nil:List[A])
+  def flatMapFilter[A](as: List[A])(f: A => Boolean): List[A] = flatMap(as)(a => if (f(a)) List(a) else Nil: List[A])
 
   /**
    * 练习3.22
    * 接受两个列表，将元素相加构造一个新列表
+   *
    * @param l1
    * @param l2
    * @return
    */
-  def listPlus(l1:List[Int],l2:List[Int]):List[Int] = (l1,l2) match {
-    case _=>Nil
-    case (Cons(l1x,l1s),Cons(l2x,l2s))=>Cons(l1x+l2x,listPlus(l1s,l2s))
+  def listPlus(l1: List[Int], l2: List[Int]): List[Int] = (l1, l2) match {
+    case (Cons(l1x, l1s), Cons(l2x, l2s)) => Cons(l1x + l2x, listPlus(l1s, l2s))
+    case _ => Nil
   }
+
+  def zipWith[A](l1: List[A], l2: List[A])(f: (A, A) => A): List[A] = (l1,l2) match {
+    case (Cons(l1x,l1s),Cons(l2x,l2s)) => Cons(f(l1x,l2x),zipWith(l1s,l2s)(f))
+    case _ => Nil
+  }
+
+  //
+  //  def hasSubsequence[A](sup:List[A],sub:List[A]):Boolean ={
+  //
+  //  }
   def apply[A](as: A*): List[A] = if (as.isEmpty) Nil else Cons(as.head, apply(as.tail: _*))
 }
