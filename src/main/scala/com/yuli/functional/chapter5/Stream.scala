@@ -37,15 +37,15 @@ sealed trait Stream[+A] {
    * @param n
    * @return
    */
-  def take(n: Int): List[A] = {
-    def loop(n: Int, stream: Stream[A]): Stream[A] = stream match {
-      case Empty => stream
-      case Cons(_, l) if n == 0 => l()
-      case Cons(h, l) => loop(n - 1, l(), h())
+  def take(n: Int): Stream[A] = {
+    def loop(n: Int, stream:Stream[A],takeStream: Stream[A]): Stream[A] = stream match {
+      case Empty => takeStream
+      case Cons(_, l) if n == 0 => takeStream
+      case Cons(h, l) => Stream.cons(h(),loop(n-1,l(),takeStream));
     }
-
-    loop(n, this, Nil).reverse
+    loop(n, this,Empty)
   }
+
 
   /**
    * 练习5.2

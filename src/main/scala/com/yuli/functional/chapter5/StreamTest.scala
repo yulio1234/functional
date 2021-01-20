@@ -15,6 +15,6 @@ object StreamTest extends App {
   /**
    * 练习5.2
    */
-  println(stream.take(6))
+  println(stream.take(2).toList)
   println(stream.drop(3))
 }
