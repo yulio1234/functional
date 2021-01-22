@@ -16,5 +16,13 @@ object StreamTest extends App {
    * 练习5.2
    */
   println(stream.take(2).toList)
-  println(stream.drop(3))
+  println(stream.drop(3).toList)
+  /**
+   * 练习5.3
+   */
+  println(stream.takeWhile(p => p % 2 == 0).toList)
+  /**
+   * 练习5.4
+   */
+  println(stream.forAll(p => p.isFinite))
 }
