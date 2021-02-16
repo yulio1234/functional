@@ -1,6 +1,5 @@
 package com.yuli.functional.chapter6
 
-import com.yuli.functional.chapter6.RNGTest.rng.int
 import com.yuli.functional.chapter6.State.unit
 
 /**
