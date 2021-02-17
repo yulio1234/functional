@@ -1,5 +1,7 @@
 package com.yuli.functional.chapter7
 
+import com.yuli.functional.chapter7.Nonblocking.{Par, run}
+
 import java.util.concurrent.{Callable, ExecutorService, Future, TimeUnit}
 
 object Par {
@@ -22,6 +24,7 @@ object Par {
   /**
    * 练习7.4
    * 返回一个函数
+   *
    * @param f
    * @tparam A
    * @tparam B
@@ -48,20 +51,62 @@ object Par {
     override def get(l: Long, timeUnit: TimeUnit): A = get
   }
 
-  def map[A,B](pa:Par[A])(f:A=>B):Par[B] = map2(pa,unit(()))((a,_)=>f(a))
-  def sortPar(parList:Par[List[Int]]):Par[List[Int]] = map(parList)(_.sorted)
+  def map[A, B](pa: Par[A])(f: A => B): Par[B] = map2(pa, unit(()))((a, _) => f(a))
+
+  def sortPar(parList: Par[List[Int]]): Par[List[Int]] = map(parList)(_.sorted)
 
   /**
    * 练习7.5
+   *
    * @param ps
    * @tparam A
    * @return
    */
-  def sequence[A](ps:List[Par[A]]):Par[List[A]] = ps.foldRight[Par[List[A]]](unit(Nil))((a,b)=>map2(a,b)((a,b)=>a::b))
-  def parMap[A,B](ps:List[A])(f:A=>B) :Par[List[B]] = fork{
-    val fbs:List[Par[B]] = ps.map(asyncF(f))
+  def sequence[A](ps: List[Par[A]]): Par[List[A]] = ps.foldRight[Par[List[A]]](unit(Nil))((a, b) => map2(a, b)((a, b) => a :: b))
+
+
+  def parMap[A, B](ps: List[A])(f: A => B): Par[List[B]] = fork {
+    val fbs: List[Par[B]] = ps.map(asyncF(f))
     sequence(fbs)
   }
 
-  def parFilter[A](as:List[A])(f:A=>Boolean):Par[List[A]] = as.foldRight[List[A]](Nil)((a,b)=>map())
+  /**
+   * 练习7.6
+   *
+   * @param as
+   * @param f
+   * @tparam A
+   * @return
+   */
+  def parFilter[A](as: List[A])(f: A => Boolean): Par[List[A]] = {
+    val pars = as.map(asyncF((a: A) => if (f(a)) List(a) else Nil))
+    map(sequence(pars))(_.flatten)
+  }
+
+  def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean = p(e).get == p2(e).get
+
+  def delay[A](fa: => Par[A]): Par[A] = es => fa(es)
+
+  def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = es => if (run(es)(cond).get()) t(es) else f(es)
+
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = es => {
+    val n = run(es)(n).get()
+    run(es)(choices(n))
+  }
+
+  def choiceMap[K, V](key: Par[K])(choices: Map[K, Par[V]]): Par[V] = es => {
+    val k = run(es)(key).get()
+    run(es)(choices(k))
+  }
+
+  def chooser[A, B](pa: Par[A])(choices: A => Par[B]): Par[B] = es => {
+    val k = run(es)(pa)
+    run(es)(choices(k.get()))
+  }
+
+  def choiceViaChooser[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = chooser(cond)(b => if (b) t else f)
+
+  def choiceNViaChooser[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = chooser(n)(n => choices(n))
+
+  def join[A](a: Par[Par[A]]): Par[A] = es => run(es)(run(es)(a).get())
 }
