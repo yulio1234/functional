@@ -1,6 +1,6 @@
 package com.yuli.functional.chapter7
 
-import com.yuli.functional.chapter7.Nonblocking.{Par, run}
+//import com.yuli.functional.chapter7.Nonblocking.{Par, run}
 
 import java.util.concurrent.{Callable, ExecutorService, Future, TimeUnit}
 
@@ -89,10 +89,10 @@ object Par {
 
   def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = es => if (run(es)(cond).get()) t(es) else f(es)
 
-  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = es => {
-    val n = run(es)(n).get()
-    run(es)(choices(n))
-  }
+//  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = es => {
+//    val n = run(es)(n).get()
+//    run(es)(choices(n))
+//  }
 
   def choiceMap[K, V](key: Par[K])(choices: Map[K, Par[V]]): Par[V] = es => {
     val k = run(es)(key).get()
