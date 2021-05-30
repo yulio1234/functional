@@ -67,11 +67,15 @@ trait RNG {
     (f(a), rng2)
   }
 
+  /**
+   * 生成一哥大于0能被2整除的数
+   * @return
+   */
   def nonNegativeEven: Rand[Int] = map(nonNegativeInt)(i => i - 1 % 2)
 
   /**
    * 练习6.5
-   *
+   * 用map生成一个double
    * @return
    */
   def doubleViaMap: Rand[Double] = map(nonNegativeInt)(i => i / (Int.MaxValue.toDouble + 1))
@@ -118,6 +122,11 @@ trait RNG {
 
   def intsViaSequence(count: Int): Rand[List[Int]] = sequence(List.fill(count)(int))
 
+  /**
+   * 生成0到n之间一个整数
+   * @param n
+   * @return
+   */
   def nonNegativeLessThan(n: Int): Rand[Int] = { rng =>
     val (i, rng2) = nonNegativeInt(rng)
     val mod = i % n
