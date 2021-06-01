@@ -1,15 +1,13 @@
 package com.yuli.functional.chapter7
 
-//import com.yuli.functional.chapter7.Nonblocking.{Par, run}
-
-import java.util.concurrent.{Callable, ExecutorService, Future, TimeUnit}
+import java.util.concurrent.{ExecutorService, Future, TimeUnit}
 
 object Par {
   type Par[A] = ExecutorService => Future[A]
 
   def run[A](s: ExecutorService)(a: Par[A]): Future[A] = a(s)
 
-  def unit[A](a: A): Par[A] = (es: ExecutorService) => UnitFuture(a)
+  def unit[A](a: A): Par[A] = (_: ExecutorService) => UnitFuture(a)
 
   def map2[A, B, C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] = {
     (es: ExecutorService) => {
@@ -89,10 +87,17 @@ object Par {
 
   def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = es => if (run(es)(cond).get()) t(es) else f(es)
 
-//  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = es => {
-//    val n = run(es)(n).get()
-//    run(es)(choices(n))
-//  }
+  /**
+   * 练习7.11
+   * @param n
+   * @param choices
+   * @tparam A
+   * @return
+   */
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = es => {
+    val k = run(es)(n).get()
+    run(es)(choices(k))
+  }
 
   def choiceMap[K, V](key: Par[K])(choices: Map[K, Par[V]]): Par[V] = es => {
     val k = run(es)(key).get()
@@ -108,5 +113,14 @@ object Par {
 
   def choiceNViaChooser[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = chooser(n)(n => choices(n))
 
+  /**
+   * 练习7.14
+   * @param a
+   * @tparam A
+   * @return
+   */
   def join[A](a: Par[Par[A]]): Par[A] = es => run(es)(run(es)(a).get())
+  def flatMap[A,B](a:Par[A])(f:A =>Par[B]):Par[B] = es => {
+    run(es)(join(map(a)(f)))
+  }
 }

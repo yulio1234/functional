@@ -36,6 +36,10 @@ case class SimpleRNG(seed: Long) extends RNG {
     (i / (Int.MaxValue.toDouble + 1), r)
   }
 
+  override def boolean(rng: RNG): (Boolean, RNG) = rng.nextInt match {
+    case (i, rng2) => (i % 2 == 0, rng2)
+  }
+
   /**
    * 练习6.3
    *

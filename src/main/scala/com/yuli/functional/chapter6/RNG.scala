@@ -23,6 +23,8 @@ trait RNG {
    */
   def double(rng: RNG): (Double, RNG)
 
+  def boolean(rng:RNG):(Boolean,RNG)
+
   /**
    * 练习6.3
    *
