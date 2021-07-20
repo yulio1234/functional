@@ -1,9 +1,8 @@
 package com.yuli.functional.chapter8
 
-import com.yuli.functional.chapter6.RNG
 import com.yuli.functional.chapter7.Par
-import com.yuli.functional.chapter8.Gen.{choose, listOf, listOfN, unit, weighted}
-import com.yuli.functional.chapter8.Prop.{forAll, run}
+import com.yuli.functional.chapter8.Gen.{choose, listOf, unit, weighted}
+import com.yuli.functional.chapter8.Prop.forAll
 
 import java.util.concurrent.{ExecutorService, Executors}
 
