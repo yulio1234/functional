@@ -37,6 +37,10 @@ object Nonblocking {
       override def call(): Unit = r
     })
 
+    def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
+
+    def asyncF[A, B](f: A => B): A => Par[B] = a => lazyUnit(f(a))
+
     def map2[A, B, C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] = es => new Future[C] {
       override private[chapter7] def apply(k: C => Unit): Unit = {
         var ar: Option[A] = None
@@ -64,12 +68,30 @@ object Nonblocking {
           })
       }
 
+    def flatMap[A, B](p: Par[A])(f: A => Par[B]): Par[B] = es => new Future[B] {
+      override private[chapter7] def apply(k: B => Unit): Unit = p(es)(a => f(a)(es)(k))
+    }
+    //    def join[A](p:Par[Par[A]])
+
+    def sequenceBalanced[A](as: IndexedSeq[Par[A]]): Par[IndexedSeq[A]] = fork {
+      if (as.isEmpty) unit(Vector())
+      else if (as.length == 1) map(as.head)(a => Vector(a))
+      else {
+        val (l, r) = as.splitAt(as.length / 2)
+        map2(sequenceBalanced(l), sequenceBalanced(r))(_ ++ _)
+      }
+    }
+
+    def parMap[A, B](as: IndexedSeq[A])(f: A => B): Par[IndexedSeq[B]] = sequenceBalanced(as.map(asyncF(f)))
+
     implicit def toParOps[A](p: Par[A]): ParOps[A] = new ParOps(p)
 
     class ParOps[A](p: Par[A]) {
       def map[B](f: A => B): Par[B] = Par.map(p)(f)
 
       def map2[B, C](b: Par[B])(f: (A, B) => C): Par[C] = Par.map2(p, b)(f)
+
+      def flatMap[B](f: A => Par[B]): Par[B] = Par.flatMap(p)(f)
     }
   }
 

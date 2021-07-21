@@ -153,8 +153,9 @@ object Monoid {
     override def zero: Par[A] = Par.unit(m.zero)
   }
 
-  def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = ???
-
+  def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = Par.parMap(v)(f).flatMap { bs =>
+    foldMapV(bs, par(m))(b=>Par.lazyUnit(b))
+  }
   /**
    * 单词接口
    */
