@@ -4,7 +4,11 @@ import com.yuli.functional.chapter7.Nonblocking.Par
 import com.yuli.functional.chapter7.Nonblocking.Par.toParOps
 
 /**
- * 单子
+ * 幺半群
+ * 满足结合律(associativity)和同一律(identity)
+ * 一个类型A
+ * 结合律：op(op(x,y),z) == op(x,op(y,z))
+ * 同一律：单位元zero:A op(x,zero) == x || op(zero,x) == x
  *
  * @tparam A
  */
@@ -124,6 +128,25 @@ object Monoid {
       m.op(foldMapV(l, m)(f), foldMapV(r, m)(f))
     }
 
+  /**
+   * 练习10.9
+   *
+   * @param ints
+   * @return
+   */
+  def ordered(ints: IndexedSeq[Int]): Boolean = {
+    val monoid = new Monoid[Option[(Int, Int, Boolean)]] {
+      override def op(o1: Option[(Int, Int, Boolean)], o2: Option[(Int, Int, Boolean)]): Option[(Int, Int, Boolean)] = (o1, o2) match {
+        case (Some((x1, y1, p)), Some((x2, y2, q))) => Some((x1 min x2, y1 max y2, p && q && y1 <= x2))
+        case (x, None) => x
+        case (None, x) => x
+      }
+
+      override def zero: Option[(Int, Int, Boolean)] = None
+    }
+    foldMapV(ints, monoid)(i => Some(i, i, true)).map(_._3).getOrElse(true)
+  }
+
   def par[A](m: Monoid[A]): Monoid[Par[A]] = new Monoid[Par[A]] {
     override def op(a1: Par[A], a2: Par[A]): Par[A] = a1.map2(a2)(m.op)
 
@@ -131,4 +154,69 @@ object Monoid {
   }
 
   def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = ???
+
+  /**
+   * 单词接口
+   */
+  sealed trait WC
+
+  /**
+   * 存储不完整单词
+   *
+   * @param chars
+   */
+  case class Stub(chars: String) extends WC
+
+  /**
+   * 存储不完整的单词和完整单词的个数
+   *
+   * @param lStub
+   * @param words
+   * @param rStub
+   */
+  case class Part(lStub: String, words: Int, rStub: String) extends WC
+
+  /**
+   * word count 幺半群
+   */
+  val wcMonoid: Monoid[WC] = new Monoid[WC] {
+    override def op(a: WC, b: WC): WC = (a, b) match {
+      case (Stub(c), Stub(d)) => Stub(c + d) //如果是两个部分单词，直接组合
+      case (Stub(c), Part(l, w, r)) => Part(c + l, w, r) //左边部分组合
+      case (Part(l, w, r), Stub(c)) => Part(l, w, r + c) //右边比分组合
+      case (Part(l1, w1, r1), Part(l2, w2, r2)) => Part(l1, w1 + (if ((r1 + l2).isEmpty) 0 else 1) + w2, r2) //中间部分组合，如果不为空，就说明是完整单词，就将单词数加一
+    }
+
+    override def zero: WC = Stub("") //默认值""
+  }
+
+  /**
+   * 计算句子单词数
+   *
+   * @param sentence
+   * @return
+   */
+  def count(sentence: String): Int = {
+    //如果是空格，就返回一个部分
+    def wc(c: Char): WC = if (c.isWhitespace) Part("", 0, "") else Stub(c.toString)
+
+    /**
+     * 得到单个单词的单词数
+     *
+     * @param word
+     * @return
+     */
+    def unStub(word: String): Int = word.length min 1
+
+    /**
+     * 使用foldMapV结合字符集合成为一个幺半群
+     */
+    foldMapV(sentence.toIndexedSeq, wcMonoid)(wc) match {
+      case Stub(word) => unStub(word)
+      case Part(l, w, r) => unStub(l) + w + unStub(r)
+    }
+
+  }
+
+
 }
