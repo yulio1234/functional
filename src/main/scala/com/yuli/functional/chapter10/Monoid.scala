@@ -154,8 +154,9 @@ object Monoid {
   }
 
   def parFoldMap[A, B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = Par.parMap(v)(f).flatMap { bs =>
-    foldMapV(bs, par(m))(b=>Par.lazyUnit(b))
+    foldMapV(bs, par(m))(b => Par.lazyUnit(b))
   }
+
   /**
    * 单词接口
    */
@@ -217,6 +218,20 @@ object Monoid {
       case Part(l, w, r) => unStub(l) + w + unStub(r)
     }
 
+  }
+
+  /**
+   * 练习10.16
+   * @param A
+   * @param B
+   * @tparam A
+   * @tparam B
+   * @return
+   */
+  def productMonoid[A, B](A: Monoid[A], B: Monoid[B]): Monoid[(A,B)] = new Monoid[(A, B)] {
+    override def op(x: (A, B), y: (A, B)): (A, B) = (A.op(x._1,y._1),B.op(x._2,y._2))
+
+    override def zero: (A, B) = (A.zero,B.zero)
   }
 
 
