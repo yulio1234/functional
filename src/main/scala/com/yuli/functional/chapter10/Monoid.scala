@@ -1,5 +1,6 @@
 package com.yuli.functional.chapter10
 
+import com.yuli.functional.chapter3.{Branch, Leaf, Tree}
 import com.yuli.functional.chapter7.Nonblocking.Par
 import com.yuli.functional.chapter7.Nonblocking.Par.toParOps
 
@@ -234,5 +235,94 @@ object Monoid {
     override def zero: (A, B) = (A.zero,B.zero)
   }
 
+  /**
+   * 抽象出一个通用的折叠方法，可以处理任何包含fold方法的对象
+   *
+   * @tparam F
+   */
+  trait Foldable[F[_]] {
+    def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B
+
+    def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B
+
+    def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B
+
+    def concatenate[A](as: F[A])(m: Monoid[A]): A = foldLeft(as)(m.zero)(m.op)
+
+    /**
+     * 练习10.15 将Foldable结构转换为List
+     * @param as
+     * @tparam A
+     * @return
+     */
+    def toList[A](as: F[A]): List[A] = foldRight(as)(List[A]())(_::_)
+  }
+
+  /**
+   * 练习10.12 实现List，IndexSeq和Stream
+   */
+  object ListFoldable extends Foldable[List] {
+    override def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B = as.foldRight(z)(f)
+
+    override def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B): B = as.foldLeft(z)(f)
+
+    override def foldMap[A, B](as: List[A])(f: A => B)(mb: Monoid[B]): B = as.foldLeft(mb.zero)((b, a) => mb.op(b, f(a)))
+  }
+
+  object IndexSeqFoldable extends Foldable[IndexedSeq] {
+    override def foldRight[A, B](as: IndexedSeq[A])(z: B)(f: (A, B) => B): B = as.foldRight(z)(f)
+
+    override def foldLeft[A, B](as: IndexedSeq[A])(z: B)(f: (B, A) => B): B = as.foldLeft(z)(f)
+
+    override def foldMap[A, B](as: IndexedSeq[A])(f: A => B)(mb: Monoid[B]): B = foldMapV(as, mb)(f)
+  }
+
+  object StreamFoldable extends Foldable[LazyList] {
+    override def foldRight[A, B](as: LazyList[A])(z: B)(f: (A, B) => B): B = as.foldRight(z)(f)
+
+    override def foldLeft[A, B](as: LazyList[A])(z: B)(f: (B, A) => B): B = as.foldLeft(z)(f)
+
+    override def foldMap[A, B](as: LazyList[A])(f: A => B)(mb: Monoid[B]): B = as.foldLeft(mb.zero)((b, a) => mb.op(b, f(a)))
+  }
+
+  /**
+   * 练习10.13实现二叉树的Foldable
+   */
+  object TreeFoldable extends Foldable[Tree] {
+    override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B = as match {
+      case Leaf(a) => f(a, z) //如果是叶子节点就执行f函数
+      case Branch(left, right) => foldRight(left)(foldRight(right)(z)(f))(f) //找到最左叶子节点得到转换后的值，然后开始找右节点的可转换值
+    }
+
+    override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B): B = as match {
+      case Leaf(a) => f(z, a)
+      case Branch(left, right) => foldLeft(right)(foldLeft(left)(z)(f))(f) //先找到最右叶子结点得到转换后的值，然后开始找左节点可以转换的值
+    }
+
+    override def foldMap[A, B](as: Tree[A])(f: A => B)(mb: Monoid[B]): B = as match {
+      case Leaf(a) => f(a) //当是叶子节点的时候进行转换
+      case Branch(left, right) => mb.op(foldMap(left)(f), foldMap(right)(f)) //递归组合各个叶子节点，根据幺半群结合律法则，对半查找和从头编列结合的数据是一致的。
+    }
+  }
+
+  /**
+   * 练习10.14实现Option的Foladable实例
+   */
+  object OptionFoldable extends Foldable[Option] {
+    override def foldRight[A, B](as: Option[A])(z: B)(f: (A, B) => B): B = as match {
+      case None => z
+      case Some(a) => f(a, z)
+    }
+
+    override def foldLeft[A, B](as: Option[A])(z: B)(f: (B, A) => B): B = as match {
+      case None => z
+      case Some(a) => f(z, a)
+    }
+
+    override def foldMap[A, B](as: Option[A])(f: A => B)(mb: Monoid[B]): B = as match {
+      case None => mb.zero
+      case Some(a) => f(a)
+    }
+  }
 
 }
