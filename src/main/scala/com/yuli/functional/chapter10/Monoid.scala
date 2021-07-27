@@ -223,16 +223,17 @@ object Monoid {
 
   /**
    * 练习10.16
+   *
    * @param A
    * @param B
    * @tparam A
    * @tparam B
    * @return
    */
-  def productMonoid[A, B](A: Monoid[A], B: Monoid[B]): Monoid[(A,B)] = new Monoid[(A, B)] {
-    override def op(x: (A, B), y: (A, B)): (A, B) = (A.op(x._1,y._1),B.op(x._2,y._2))
+  def productMonoid[A, B](A: Monoid[A], B: Monoid[B]): Monoid[(A, B)] = new Monoid[(A, B)] {
+    override def op(x: (A, B), y: (A, B)): (A, B) = (A.op(x._1, y._1), B.op(x._2, y._2))
 
-    override def zero: (A, B) = (A.zero,B.zero)
+    override def zero: (A, B) = (A.zero, B.zero)
   }
 
   /**
@@ -301,7 +302,7 @@ object Monoid {
 
     override def foldMap[A, B](as: Tree[A])(f: A => B)(mb: Monoid[B]): B = as match {
       case Leaf(a) => f(a) //当是叶子节点的时候进行转换
-      case Branch(left, right) => mb.op(foldMap(left)(f), foldMap(right)(f)) //递归组合各个叶子节点，根据幺半群结合律法则，对半查找和从头编列结合的数据是一致的。
+      case Branch(left, right) => mb.op(foldMap(left)(f)(mb), foldMap(right)(f)(mb)) //递归组合各个叶子节点，根据幺半群结合律法则，对半查找和从头编列结合的数据是一致的。
     }
   }
 
@@ -324,5 +325,29 @@ object Monoid {
       case Some(a) => f(a)
     }
   }
+  def mapMergeMonoid[K, V](V: Monoid[V]): Monoid[Map[K, V]] = new Monoid[Map[K, V]] {
+    override def op(a: Map[K, V], b: Map[K, V]): Map[K, V] = (a.keySet ++ b.keySet).foldLeft(zero) { (acc, k) =>
+      acc.updated(k, V.op(a.getOrElse(k, V.zero), b.getOrElse(k, V.zero)))
+    }
+
+    override def zero: Map[K, V] = Map[K, V]()
+  }
+
+  /**
+   * 练习10.17
+   *
+   * @param B
+   * @tparam A
+   * @tparam B
+   * @return
+   */
+  def functionMonoid[A, B](B: Monoid[B]): Monoid[A => B] = new Monoid[A => B] {
+    override def op(f: A => B, g: A => B): A => B = a => B.op(f(a), g(a))
+
+    override def zero: A => B = a => B.zero
+  }
+
+  def bag[A](as: IndexedSeq[A]): Map[A, Int] = foldMapV(as, mapMergeMonoid[A, Int](intAddition))((a: A) => Map(a -> 1))
+
 
 }

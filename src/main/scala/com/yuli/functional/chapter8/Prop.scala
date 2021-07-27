@@ -66,7 +66,7 @@ object Prop {
   }
 
   def checkPar: Unit = {
-//    equal(Par.map(Par.unit(1))(_+1),Par.unit(2))
+    //    equal(Par.map(Par.unit(1))(_+1),Par.unit(2))
   }
 
   def run(p: Prop, maxSize: Int = 100, testCases: Int = 100, rng: RNG = RNG.SimpleRNG(System.currentTimeMillis)): Unit =
@@ -116,7 +116,7 @@ object Prop {
 
   private val S: Gen[ExecutorService] = weighted(choose(1, 4).map(Executors.newFixedThreadPool) -> .75, unit(Executors.newCachedThreadPool) -> .25)
 
-  def forAllPar[A](g: Gen[A])(f: A => Par[Boolean]): Prop = forAll(S ** g) { case s ** a => f(a)(s).get() }
+  def forAllPar[A](g: Gen[A])(f: A => Par[Boolean]): Prop = forAll(S ** g) { case (s, a) => f(a)(s).get() }
 
   /**
    * 通过简单重复调用生成器实现一个无限的A Stream
