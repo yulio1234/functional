@@ -2,8 +2,9 @@ package com.yuli.functional.chapter12
 
 import com.yuli.functional.chapter10.Monoid
 import com.yuli.functional.chapter10.Monoid.Foldable
-import com.yuli.functional.chapter11.Functor
+import com.yuli.functional.chapter11.{Functor, Monad}
 import com.yuli.functional.chapter3.Tree
+import com.yuli.functional.chapter6.State
 
 /**
  * 可应用函子，将map2和unit作为原语
@@ -160,7 +161,31 @@ trait Monad[F[_]] extends Applicative[F] {
   override def map2[A, B, C](fa: F[A], fb: F[B])(f: (A, B) => C): F[C] = flatMap(fa)(a => map(fb)(b => f(a, b)))
 }
 
-trait Traversable[F[_]] extends Functor[F] {
+object Monad {
+  def stateMonad[S] = new Monad[({type f[x] = State[S, x]})#f] {
+    override def flatMap[A, B](fa: State[S, A])(f: A => State[S, B]): State[S, B] = fa flatMap f
+
+    override def unit[A](a: => A): State[S, A] = State(s => (a, s))
+  }
+
+  /**
+   * 练习12.20
+   * @param G
+   * @param H
+   * @param T
+   * @tparam G
+   * @tparam H
+   * @return
+   */
+  def composeM[G[_], H[_]](implicit G: Monad[G], H: Monad[H], T: Traversable[H]): Monad[({type f[x] = G[H[x]]})#f] = new Monad[({type f[x] = G[H[x]]})#f] {
+    override def flatMap[A, B](fa: G[H[A]])(f: A => G[H[B]]): G[H[B]] = G.flatMap(fa)(na => G.map(T.traverse(na)(f))(H.join))
+
+    override def unit[A](a: => A): G[H[A]] = G.unit(H.unit(a))
+  }
+}
+
+trait Traversable[F[_]] extends Functor[F] with Foldable[F] {
+  self =>
   def traverse[G[_] : Applicative, A, B](fa: F[A])(f: A => G[B]): G[F[B]] = sequence(map(fa)(f))
 
   def sequence[G[_] : Applicative, A](fga: F[G[A]]): G[F[A]] = traverse(fga)(ga => ga)
@@ -172,17 +197,136 @@ trait Traversable[F[_]] extends Functor[F] {
     override def unit[A](a: => A): Id[A] = a
   }
 
+  /**
+   * 练习12.14
+   *
+   * @param fa
+   * @param f
+   * @tparam A
+   * @tparam B
+   * @return
+   */
   def map[A, B](fa: F[A])(f: A => B): F[B] = traverse[Id, A, B](fa)(f)(idMonad)
+
+  type Const[M, B] = M
+
+  implicit def monoidApplicative[M](M: Monoid[M]) = new Applicative[({type f[x] = Const[M, x]})#f] {
+    override def unit[A](a: => A): Const[M, A] = M.zero
+
+    override def map2[A, B, C](fa: Const[M, A], fb: Const[M, B])(f: (A, B) => C): Const[M, C] = M.op(fa, fb)
+  }
+
+
+  import State._
+
+  override def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B = traverse[({type f[x] = Const[B, x]})#f, A, Nothing](as)(f)(monoidApplicative(mb))
+
+  def traverseS[S, A, B](fa: F[A])(f: A => State[S, B]): State[S, F[B]] = traverse[({type f[x] = State[S, x]})#f, A, B](fa)(f)(Monad.stateMonad)
+
+  /**
+   * 对每个元素生成序号
+   *
+   * @param ta
+   * @tparam A
+   * @return
+   */
+  def zipWithIndex_[A](ta: F[A]): F[(A, Int)] =
+    traverseS(ta)((a: A) => (for {
+      i <- get[Int]
+      _ <- set(i + 1)
+    } yield (a, i))).run(0)._1
+
+  def toList_[A](as: F[A]): List[A] = traverseS(as)((a: A) => (for {
+    as <- get[List[A]] //获取当前状态，累加的list
+    _ <- set(a :: as)
+  } yield ())).run(Nil)._2.reverse
+
+  def mapAccum[S, A, B](fa: F[A], s: S)(f: (A, S) => (B, S)): (F[B], S) = traverseS(fa)((a: A) => (for {
+    s1 <- get[S]
+    (b, s2) = f(a, s1)
+    _ <- set(s2)
+  } yield b)).run(s)
+
+  /**
+   * 练习10.15 将Foldable结构转换为List
+   *
+   * @param as
+   * @tparam A
+   * @return
+   */
+  override def toList[A](as: F[A]): List[A] = mapAccum(as, List[A]())((a, s) => ((), a :: s))._2.reverse
+
+  /**
+   * 练习12.16 将函子转换为list后取反
+   *
+   * @param fa
+   * @tparam A
+   * @return
+   */
+  def reverse[A](fa: F[A]): F[A] = mapAccum(fa, toList(fa).reverse)((_, as) => (as.head, as.tail))._1
+
+  override def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B = mapAccum(as, z)((a, b) => ((), f(a, b)))._2
+
+  override def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B = mapAccum(as, z)((a, b) => ((), f(b, a)))._2
+
+  def zip[A, B](fa: F[A], fb: F[B]): F[(A, B)] = (mapAccum(fa, toList(fb)) {
+    case (a, Nil) => sys.error("zip不能处理改情况")
+    case (a, b :: bs) => ((a, b), bs)
+  }._1)
+
+  def zipL[A, B](fa: F[A], fb: F[B]): F[(A, Option[B])] = (mapAccum(fa, toList(fb)) {
+    case (a, Nil) => ((a, None), Nil)
+    case (a, b :: bs) => ((a, Some(b)), bs)
+  })._1
+
+  def zipR[A, B](fa: F[A], fb: F[B]): F[(Option[A], B)] = (mapAccum(fb, toList(fa)) {
+    case (b, Nil) => ((None, b), Nil)
+    case (b, a :: as) => ((Some(a), b), as)
+  })._1
+
+  /**
+   * 练习12.18 将两个可遍历函子融合成一个
+   *
+   * @param fa
+   * @param f
+   * @param g
+   * @param G
+   * @param H
+   * @param M
+   * @param N
+   * @tparam G
+   * @tparam H
+   * @tparam A
+   * @tparam B
+   * @return
+   */
+  def fuse[G[_], H[_], A, B](fa: F[A])(f: A => G[B], g: A => H[B])(G: Applicative[G], H: Applicative[H])(implicit M: Applicative[G], N: Applicative[G]): (G[F[B]], H[F[B]]) =
+    traverse[({type f[x] = (G[x], H[x])})#f, A, B](fa)(a => (f(a), g(a)))(G product H)
+
+  def compose[G[_]](implicit G: Traversable[G]): Traversable[({type f[x] = F[G[x]]})#f] = new Traversable[({type f[x] = F[G[x]]})#f] {
+    override def traverse[G[_] : Applicative, A, B](fa: F[G[A]])(f: A => G[B]): G[F[G[B]]] = self.traverse(fa)((ga: G[A]) => G.traverse(ga)(f))
+  }
+
 }
 
+case class Tree[+A](head: A, tail: List[Tree[A]])
+
 object Traversable {
+  /**
+   * 练习12.13
+   */
   val listTraversable = new Traversable[List] {
-    override def traverse[G[_] : Applicative, A, B](fa: List[A])(f: A => G[B])(implicit G: Applicative[G]): G[List[B]] =
+    override def traverse[G[_], A, B](fa: List[A])(f: A => G[B])(implicit G: Applicative[G]): G[List[B]] =
       fa.foldRight(G.unit(List[B]()))((a, fbs) => G.map2(f(a), fbs)(_ :: _))
   }
 
   val optionTraversable = new Traversable[Option] {
-    override def traverse[G[_] : Applicative, A, B](fa: Option[A])(f: A => G[B]): G[Option[B]] =
+    override def traverse[G[_], A, B](fa: Option[A])(f: A => G[B])(implicit G: Applicative[G]): G[Option[B]] = fa match {
+      case Some(a) => G.map(f(a))(Some(_))
+      case None => G.unit(None)
+    }
   }
-  val treeTraversable = new Traversable[Tree] {}
+  val treeTraversable = new Traversable[Tree] {
+    override def traverse[G[_], A, B](fa: Tree[A])(f: A => G[B])(implicit G: Applicative[G]): G[Tree[B]] = G.map2(f(fa.head), listTraversable.traverse(fa.tail)(a => traverse(a)(f)))(Tree(_, _))
+  }
 }

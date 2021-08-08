@@ -1,5 +1,6 @@
 package com.yuli.functional.chapter6
 
+import com.yuli.functional.chapter11.Monad
 import com.yuli.functional.chapter6.State.unit
 
 /**
@@ -10,6 +11,14 @@ import com.yuli.functional.chapter6.State.unit
  * @tparam A
  */
 case class State[S, +A](run: S => (A, S)) {
+  def apply(stateMonad: Monad[({
+    type lambda[X] = State[Nothing, X]
+  })#lambda] with Object {
+    def unit[A](a: => A): State[Nothing, A]
+
+    def flatMap[A, B](ma: State[Nothing, A])(f: A => State[Nothing, B]): State[Nothing, B]
+  }): Int = ???
+
   def flatMap[B](f: A => State[S, B]): State[S, B] = State { s =>
     val (a, s2) = run(s)
     f(a).run(s2)
