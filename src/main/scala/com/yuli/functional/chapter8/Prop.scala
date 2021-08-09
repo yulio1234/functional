@@ -1,10 +1,9 @@
 package com.yuli.functional.chapter8
 
 import com.yuli.functional.chapter6.RNG
-import com.yuli.functional.chapter7.Par
-import com.yuli.functional.chapter7.Par.{Par, equal}
+import com.yuli.functional.chapter7.Par.Par
 import com.yuli.functional.chapter8.Gen.{choose, unit, weighted}
-import com.yuli.functional.chapter8.Prop.{FailedCase, MaxSize, SuccessCount, TestCases, forAll}
+import com.yuli.functional.chapter8.Prop.{FailedCase, MaxSize, SuccessCount, TestCases}
 
 import java.util.concurrent.{ExecutorService, Executors}
 
