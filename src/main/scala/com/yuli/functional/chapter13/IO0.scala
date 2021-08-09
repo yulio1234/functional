@@ -74,4 +74,59 @@ object IO1 {
     d <- ReadLine.map(_.toDouble)
     _ <- PrintLine(fahrenheitToCelsius(d).toString)
   } yield ()
+
+  /**
+   * 从命令行读取一行并输出
+   */
+  val echo = ReadLine.flatMap(PrintLine)
+  /**
+   * 从命令行读取一行并解析成Int返回
+   */
+  val readInt = ReadLine.map(_.toInt)
+
+}
+
+object IO2 {
+  sealed trait IO[A] {
+    def flatMap[B](f: A => IO[B]): IO[B] = FlatMap(this, f)
+
+    def map[B](f: A => B): IO[B] = flatMap(f andThen (Return(_)))
+  }
+
+  /**
+   * 单纯返回数据
+   * @param a
+   * @tparam A
+   */
+  case class Return[A](a: A) extends IO[A]
+
+  /**
+   * 执行作用，并返回参数
+   * @param resume
+   * @tparam A
+   */
+  case class Suspend[A](resume: () => A) extends IO[A]
+
+  /**
+   * 两个步骤组合
+   * @param sub
+   * @param k
+   * @tparam A
+   * @tparam B
+   */
+  case class FlatMap[A, B](sub: IO[A], k: A => IO[B]) extends IO[A]
+
+  def printLine(s:String):IO[Unit] = Suspend(()=>Return(println(s)))
+
+  def run[A](io:IO[A]):A = io match {
+    case Return(a) => a
+    case Suspend(r) =>r()
+    case FlatMap(x,f) => x match {
+      case Return(a) => run(f(a))
+      case Suspend(r) => run(f(r()))
+      case FlatMap(y,g) => run(y flatMap(a => g(a) flatMap(f)))
+
+    }
+
+  }
 }
