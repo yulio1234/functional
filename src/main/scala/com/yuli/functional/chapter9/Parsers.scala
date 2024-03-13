@@ -6,10 +6,19 @@ import scala.util.matching.Regex
 trait Parsers[Parser[+_]] {
   self =>
   def run[A](p: Parser[A])(input: String): Either[ParserError, A]
+  trait Result[+A]
+  case class Success[+A](get:A,charsConsumed:Int) extends Result[A]
+  case class Failure(get:ParserError) extends Result[Nothing]
 
-//  type Parser[+A] = String => Either[ParserError, A]
+  type Parser[+A] = Location => Result[A]
 
-  implicit def string(s: String): Parser[String]
+
+  def string(s: String): Parser[String] =
+    (input:String) =>
+      if(input.startsWith(s))
+        Right(s)
+      else
+        Left(Location(input).toError("e"))
 
   /**
    * 将解析器转换为解析操作器
@@ -60,6 +69,12 @@ trait Parsers[Parser[+_]] {
    */
   def map[A, B](a: Parser[A])(f: A => B): Parser[B] = flatMap(a)(f andThen succeed)
 
+  /**
+   * 得到部分输入的字符串，避免调用list的size方法
+   * @param p
+   * @tparam A
+   * @return
+   */
   def slice[A](p: Parser[A]): Parser[String]
 
   /**
@@ -112,6 +127,12 @@ trait Parsers[Parser[+_]] {
    */
   def scope[A](message: String)(p: Parser[A]): Parser[A]
 
+  /**
+   * 延迟提交，在p1失败时，会回到初始状态，执行p2
+   * @param p
+   * @tparam A
+   * @return
+   */
   def attempt[A](p: Parser[A]): Parser[A]
 
 

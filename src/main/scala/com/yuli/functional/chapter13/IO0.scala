@@ -14,12 +14,12 @@ import scala.io.StdIn.readLine
 object IO0 {
   trait IO {
     self =>
-    def run: Unit
+    def run(): Unit
 
     def ++(io: IO): IO = new IO {
-      override def run: Unit = {
-        self.run
-        io.run
+      override def run(): Unit = {
+        self.run()
+        io.run()
       }
     }
   }
@@ -78,12 +78,11 @@ object IO1 {
   /**
    * 从命令行读取一行并输出
    */
-  val echo = ReadLine.flatMap(PrintLine)
+  val echo: IO[Unit] = ReadLine.flatMap(PrintLine)
   /**
    * 从命令行读取一行并解析成Int返回
    */
-  val readInt = ReadLine.map(_.toInt)
-
+  val readInt: IO[Int] = ReadLine.map(_.toInt)
 }
 
 object IO2 {
@@ -118,15 +117,15 @@ object IO2 {
 
   def printLine(s:String):IO[Unit] = Suspend(()=>Return(println(s)))
 
-  def run[A](io:IO[A]):A = io match {
-    case Return(a) => a
-    case Suspend(r) =>r()
-    case FlatMap(x,f) => x match {
-      case Return(a) => run(f(a))
-      case Suspend(r) => run(f(r()))
-      case FlatMap(y,g) => run(y flatMap(a => g(a) flatMap(f)))
-
-    }
-
-  }
+//  def run[A](io:IO[A]):A = io match {
+//    case Return(a) => a
+//    case Suspend(r) =>r()
+//    case FlatMap(x,f) => x match {
+//      case Return(a) => run(f(a))
+//      case Suspend(r) => run(f(r()))
+//      case FlatMap(y,g) => run(y flatMap(a => g(a) flatMap(f)))
+//
+//    }
+//
+//  }
 }
